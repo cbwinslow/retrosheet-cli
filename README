@@ -1,33 +1,70 @@
+# Retrosheet CLI
 
-# Retrosheet Bulk Ingestion
+A robust command-line tool for downloading and ingesting the **complete** Retrosheet baseball data set into a PostgreSQL database. Designed for 100% coverage, speed, and analytical depth.
 
-This package provides scripts and DDL to download and ingest the full set of Retrosheet
-CSV outputs (allplayers, gameinfo, teamstats, batting, pitching, fielding, plays) into
-PostgreSQL.
+## Features
 
-## High-level design
+- **Total Data Mirror**: Fetches and ingests nearly 30 discrete Retrosheet archives, covering 150+ years of baseball history (1871-present).
+- **One-Step Bootstrap**: A single command (`bootstrap`) to handle environment setup, bulk download, schema initialization, and data ingestion.
+- **Self-Documenting Schema**: Every table and critical column in the PostgreSQL database includes official Retrosheet descriptions via SQL `COMMENT` statements.
+- **High-Performance Ingestion**: Optimized with PostgreSQL `COPY` and dynamic file discovery within nested ZIP structures.
+- **Robust Schema**: Includes 161-field game logs, team-year rosters, biographical data, transactions, and specialized milestone lists.
 
-- Use Retrosheet's main CSV zip, which contains seven master files covering all games
-  from 1898-2025.[web:1][web:14]
-- Use the parsed play-by-play master `plays.csv`, which mirrors the event-file data model
-  and exposes rich pitch-, plate appearance-, and baserunner-level features.[web:5][web:23]
-- Land raw zips and CSVs under `data/retrosheet/raw` and `data/retrosheet/staging`.
-- Ingest into a normalized `retrosheet` schema using `COPY` for bulk load.
+## Prerequisites
 
-## Usage
+- Python 3.9+
+- PostgreSQL
+- Python packages: `requests`, `psycopg2-binary`
 
-```bash
-# 1) Download all master CSVs + plays
-python -m retrosheet_ingest.cli download --data-dir data/retrosheet
+## Quick Start (The Bootstrap)
 
-# 2) Create schema
-psql "$DSN" -f retrosheet_ingest/ddl_postgres.sql
+The most robust way to start is the `bootstrap` command. This will download ~750MB of data and build a fully indexed relational database.
 
-# 3) Ingest into Postgres
-python -m retrosheet_ingest.cli ingest --dsn "$DSN" --data-dir data/retrosheet
+1. **Install dependencies**:
+   ```bash
+   pip install requests psycopg2-binary
+   ```
+
+2. **Run the bootstrap**:
+   ```bash
+   python cli.py bootstrap --dsn "postgresql://user:password@localhost:5432/baseball"
+   ```
+
+## CLI Commands
+
+| Command | Description |
+| :--- | :--- |
+| `bootstrap` | Robust, one-step setup. Downloads everything and builds the database. |
+| `download` | Fetches and extracts all identified Retrosheet ZIP archives. |
+| `ingest` | Loads extracted CSV/TXT data into PostgreSQL (use `--init-schema` for first run). |
+| `full` | Alias for `bootstrap`. |
+
+## Data Coverage & Schema
+
+### Tables & Descriptions
+
+| Table | Description |
+| :--- | :--- |
+| `personnel` | Master biographical info for all players, managers, coaches, and umpires. |
+| `gamelogs` | **161 fields** of statistical data per game (1871-present). |
+| `rosters` | Seasonal player-team assignments from .ROS files. |
+| `milestones` | Specialized lists: No-Hitters, Triple Plays, 3+ HR games, Batting Cycles, etc. |
+| `gameinfo` | Metadata including attendance, field conditions, and umpires. |
+| `batting`, `pitching`, `fielding` | Detailed in-game performance statistics by player. |
+| `transactions` | Complete player movement history (Trades, Drafts, Free Agency). |
+| `schedules` | Planned and future game schedules. |
+| `parks`, `teams` | Directory of ballparks and team franchises. |
+
+### Querying Metadata
+You can view the detailed descriptions for any table directly in PostgreSQL using:
+```sql
+SELECT obj_description('retrosheet.gamelogs'::regclass);
+```
+Or for columns:
+```sql
+SELECT col_description('retrosheet.gamelogs'::regclass, 1);
 ```
 
-Retrosheet data copyright notice must be preserved in any derivative products:
+## Attribution
 
-> The information used here was obtained free of charge from and is copyrighted by
-> Retrosheet. Interested parties may contact Retrosheet at 20 Sunset Rd., Newark, DE 19711.[web:1][web:5]
+The information used here was obtained free of charge from and is copyrighted by Retrosheet. Interested parties may contact Retrosheet at www.retrosheet.org.

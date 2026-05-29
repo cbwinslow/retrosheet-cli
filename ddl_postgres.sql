@@ -1,49 +1,261 @@
-
--- PostgreSQL schema for Retrosheet master CSVs
--- Based on Retrosheet "Contents of CSV Download Files" documentation.
+-- PostgreSQL schema for Retrosheet data
+-- Includes exhaustive metadata and column descriptions (comments).
 
 CREATE SCHEMA IF NOT EXISTS retrosheet;
 
--- allplayers.csv
-CREATE TABLE IF NOT EXISTS retrosheet.allplayers (
-    id          TEXT PRIMARY KEY, -- RetroID
-    last        TEXT NOT NULL,
-    first       TEXT NOT NULL,
-    bat         CHAR(1) NOT NULL, -- B/L/R/?
-    "throw"     CHAR(1) NOT NULL,
-    team        TEXT NOT NULL, -- Retrosheet TeamID
-    g           INTEGER,
-    g_p         INTEGER,
-    g_sp        INTEGER,
-    g_rp        INTEGER,
-    g_c         INTEGER,
-    g_1b        INTEGER,
-    g_2b        INTEGER,
-    g_3b        INTEGER,
-    g_ss        INTEGER,
-    g_lf        INTEGER,
-    g_cf        INTEGER,
-    g_rf        INTEGER,
-    g_of        INTEGER,
-    g_dh        INTEGER,
-    g_ph        INTEGER,
-    g_pr        INTEGER,
-    first_g     DATE,
-    last_g      DATE,
-    season      INTEGER,
-    CONSTRAINT allplayers_unique_team_season UNIQUE (id, team, season)
+-- ==========================================
+-- 1. Personnel & Biographical Data
+-- ==========================================
+
+CREATE TABLE IF NOT EXISTS retrosheet.personnel (
+    id              TEXT PRIMARY KEY,
+    lastname        TEXT,
+    usename         TEXT,
+    fullname        TEXT,
+    birthdate       DATE,
+    birthcity       TEXT,
+    birthstate      TEXT,
+    birthcountry    TEXT,
+    deathdate       DATE,
+    deathcity       TEXT,
+    deathstate      TEXT,
+    deathcountry    TEXT,
+    cemetery        TEXT,
+    cem_city        TEXT,
+    cem_state       TEXT,
+    cem_ctry        TEXT,
+    cem_note        TEXT,
+    birthname       TEXT,
+    altname         TEXT,
+    debut_p         DATE,
+    last_p          DATE,
+    debut_c         DATE,
+    last_c          DATE,
+    debut_m         DATE,
+    last_m          DATE,
+    debut_u         DATE,
+    last_u          DATE,
+    bats            CHAR(1),
+    throws          CHAR(1),
+    height          INTEGER,
+    weight          INTEGER,
+    hof             TEXT
 );
 
-CREATE INDEX IF NOT EXISTS idx_allplayers_team_season ON retrosheet.allplayers(team, season);
+COMMENT ON TABLE retrosheet.personnel IS 'Master biographical information for all players, managers, coaches, and umpires.';
+COMMENT ON COLUMN retrosheet.personnel.id IS 'Unique Retrosheet Person ID (usually 8 chars).';
+COMMENT ON COLUMN retrosheet.personnel.usename IS 'The first name the person was commonly known by.';
+COMMENT ON COLUMN retrosheet.personnel.debut_p IS 'Date of the first game played.';
+COMMENT ON COLUMN retrosheet.personnel.hof IS 'Hall of Fame status (marked HOF if inducted).';
 
--- gameinfo.csv
+-- ==========================================
+-- 2. Infrastructure (Parks & Teams)
+-- ==========================================
+
+CREATE TABLE IF NOT EXISTS retrosheet.parks (
+    site            TEXT PRIMARY KEY,
+    name            TEXT,
+    city            TEXT,
+    state           TEXT,
+    first_g         DATE,
+    last_g          DATE
+);
+
+COMMENT ON TABLE retrosheet.parks IS 'Directory of all ballparks where Retrosheet-tracked games were played.';
+COMMENT ON COLUMN retrosheet.parks.site IS 'Unique Retrosheet Ballpark ID (e.g., NYC16).';
+
+CREATE TABLE IF NOT EXISTS retrosheet.teams (
+    team            TEXT PRIMARY KEY,
+    city            TEXT,
+    nickname        TEXT,
+    first_g         DATE,
+    last_g          DATE
+);
+
+COMMENT ON TABLE retrosheet.teams IS 'Master list of team franchises and their active date ranges.';
+
+-- ==========================================
+-- 3. Game Records (Logs & Metadata)
+-- ==========================================
+
+-- 161 fields as defined by Retrosheet
+CREATE TABLE IF NOT EXISTS retrosheet.gamelogs (
+    game_date               DATE,
+    game_number             INTEGER,
+    day_of_week             VARCHAR(3),
+    visiting_team           VARCHAR(3),
+    visiting_league         VARCHAR(2),
+    visiting_game_number    INTEGER,
+    home_team               VARCHAR(3),
+    home_league             VARCHAR(2),
+    home_game_number        INTEGER,
+    visiting_score          INTEGER,
+    home_score              INTEGER,
+    outs_total              INTEGER,
+    day_night               CHAR(1),
+    completion_info         TEXT,
+    forfeit_info            CHAR(1),
+    protest_info            CHAR(1),
+    park_id                 VARCHAR(5),
+    attendance              INTEGER,
+    time_in_minutes         INTEGER,
+    visiting_line_score     TEXT,
+    home_line_score         TEXT,
+    v_ab                    INTEGER,
+    v_h                     INTEGER,
+    v_2b                    INTEGER,
+    v_3b                    INTEGER,
+    v_hr                    INTEGER,
+    v_rbi                   INTEGER,
+    v_sh                    INTEGER,
+    v_sf                    INTEGER,
+    v_hbp                   INTEGER,
+    v_bb                    INTEGER,
+    v_ibb                   INTEGER,
+    v_so                    INTEGER,
+    v_sb                    INTEGER,
+    v_cs                    INTEGER,
+    v_gidp                  INTEGER,
+    v_ci                    INTEGER,
+    v_lob                   INTEGER,
+    v_pitchers              INTEGER,
+    v_er_indiv              INTEGER,
+    v_er_team               INTEGER,
+    v_wp                    INTEGER,
+    v_balks                 INTEGER,
+    v_po                    INTEGER,
+    v_a                     INTEGER,
+    v_e                     INTEGER,
+    v_pb                    INTEGER,
+    v_dp                    INTEGER,
+    v_tp                    INTEGER,
+    h_ab                    INTEGER,
+    h_h                     INTEGER,
+    h_2b                    INTEGER,
+    h_3b                    INTEGER,
+    h_hr                    INTEGER,
+    h_rbi                   INTEGER,
+    h_sh                    INTEGER,
+    h_sf                    INTEGER,
+    h_hbp                   INTEGER,
+    h_bb                    INTEGER,
+    h_ibb                   INTEGER,
+    h_so                    INTEGER,
+    h_sb                    INTEGER,
+    h_cs                    INTEGER,
+    h_gidp                  INTEGER,
+    h_ci                    INTEGER,
+    h_lob                   INTEGER,
+    h_pitchers              INTEGER,
+    h_er_indiv              INTEGER,
+    h_er_team               INTEGER,
+    h_wp                    INTEGER,
+    h_balks                 INTEGER,
+    h_po                    INTEGER,
+    h_a                     INTEGER,
+    h_e                     INTEGER,
+    h_pb                    INTEGER,
+    h_dp                    INTEGER,
+    h_tp                    INTEGER,
+    ump_hp_id               VARCHAR(8),
+    ump_hp_name             TEXT,
+    ump_1b_id               VARCHAR(8),
+    ump_1b_name             TEXT,
+    ump_2b_id               VARCHAR(8),
+    ump_2b_name             TEXT,
+    ump_3b_id               VARCHAR(8),
+    ump_3b_name             TEXT,
+    ump_lf_id               VARCHAR(8),
+    ump_lf_name             TEXT,
+    ump_rf_id               VARCHAR(8),
+    ump_rf_name             TEXT,
+    v_manager_id            VARCHAR(8),
+    v_manager_name          TEXT,
+    h_manager_id            VARCHAR(8),
+    h_manager_name          TEXT,
+    winning_pitcher_id      VARCHAR(8),
+    winning_pitcher_name    TEXT,
+    losing_pitcher_id       VARCHAR(8),
+    losing_pitcher_name     TEXT,
+    saving_pitcher_id       VARCHAR(8),
+    saving_pitcher_name     TEXT,
+    gwrbi_id                VARCHAR(8),
+    gwrbi_name              TEXT,
+    v_starting_pitcher_id   VARCHAR(8),
+    v_starting_pitcher_name TEXT,
+    h_starting_pitcher_id   VARCHAR(8),
+    h_starting_pitcher_name TEXT,
+    v_player_1_id           VARCHAR(8),
+    v_player_1_name         TEXT,
+    v_player_1_pos          INTEGER,
+    v_player_2_id           VARCHAR(8),
+    v_player_2_name         TEXT,
+    v_player_2_pos          INTEGER,
+    v_player_3_id           VARCHAR(8),
+    v_player_3_name         TEXT,
+    v_player_3_pos          INTEGER,
+    v_player_4_id           VARCHAR(8),
+    v_player_4_name         TEXT,
+    v_player_4_pos          INTEGER,
+    v_player_5_id           VARCHAR(8),
+    v_player_5_name         TEXT,
+    v_player_5_pos          INTEGER,
+    v_player_6_id           VARCHAR(8),
+    v_player_6_name         TEXT,
+    v_player_6_pos          INTEGER,
+    v_player_7_id           VARCHAR(8),
+    v_player_7_name         TEXT,
+    v_player_7_pos          INTEGER,
+    v_player_8_id           VARCHAR(8),
+    v_player_8_name         TEXT,
+    v_player_8_pos          INTEGER,
+    v_player_9_id           VARCHAR(8),
+    v_player_9_name         TEXT,
+    v_player_9_pos          INTEGER,
+    h_player_1_id           VARCHAR(8),
+    h_player_1_name         TEXT,
+    h_player_1_pos          INTEGER,
+    h_player_2_id           VARCHAR(8),
+    h_player_2_name         TEXT,
+    h_player_2_pos          INTEGER,
+    h_player_3_id           VARCHAR(8),
+    h_player_3_name         TEXT,
+    h_player_3_pos          INTEGER,
+    h_player_4_id           VARCHAR(8),
+    h_player_4_name         TEXT,
+    h_player_4_pos          INTEGER,
+    h_player_5_id           VARCHAR(8),
+    h_player_5_name         TEXT,
+    h_player_5_pos          INTEGER,
+    h_player_6_id           VARCHAR(8),
+    h_player_6_name         TEXT,
+    h_player_6_pos          INTEGER,
+    h_player_7_id           VARCHAR(8),
+    h_player_7_name         TEXT,
+    h_player_7_pos          INTEGER,
+    h_player_8_id           VARCHAR(8),
+    h_player_8_name         TEXT,
+    h_player_8_pos          INTEGER,
+    h_player_9_id           VARCHAR(8),
+    h_player_9_name         TEXT,
+    h_player_9_pos          INTEGER,
+    additional_info         TEXT,
+    acquisition_info        CHAR(1),
+    PRIMARY KEY (home_team, game_date, game_number)
+);
+
+COMMENT ON TABLE retrosheet.gamelogs IS 'Complete game log records containing 161 fields of statistical data per game.';
+COMMENT ON COLUMN retrosheet.gamelogs.game_date IS 'Date of the game (Format: YYYYMMDD).';
+COMMENT ON COLUMN retrosheet.gamelogs.outs_total IS 'Length of the game in outs (e.g., 54 for a standard 9-inning game).';
+COMMENT ON COLUMN retrosheet.gamelogs.acquisition_info IS 'Code for how the data was acquired (Y=Official, N=Unofficial, D=Daily Log, P=Partial).';
+
 CREATE TABLE IF NOT EXISTS retrosheet.gameinfo (
     gid         TEXT PRIMARY KEY,
-    visteam     TEXT NOT NULL,
-    hometeam    TEXT NOT NULL,
+    visteam     TEXT,
+    hometeam    TEXT,
     site        TEXT,
-    date        DATE NOT NULL,
-    number      INTEGER NOT NULL,
+    date        DATE,
+    number      INTEGER,
     starttime   TEXT,
     daynight    TEXT,
     innings     INTEGER,
@@ -80,261 +292,18 @@ CREATE TABLE IF NOT EXISTS retrosheet.gameinfo (
     lineups     TEXT,
     box         TEXT,
     pbp         TEXT,
-    season      INTEGER
+    season      INTEGER,
+    FOREIGN KEY (site) REFERENCES retrosheet.parks(site),
+    FOREIGN KEY (visteam) REFERENCES retrosheet.teams(team),
+    FOREIGN KEY (hometeam) REFERENCES retrosheet.teams(team)
 );
 
-CREATE INDEX IF NOT EXISTS idx_gameinfo_season ON retrosheet.gameinfo(season);
-CREATE INDEX IF NOT NOT EXISTS idx_gameinfo_teams ON retrosheet.gameinfo(visteam, hometeam);
+COMMENT ON TABLE retrosheet.gameinfo IS 'Metadata for games, including conditions, umpires, and box/pbp status.';
 
--- teamstats.csv
-CREATE TABLE IF NOT EXISTS retrosheet.teamstats (
-    gid         TEXT NOT NULL,
-    team        TEXT NOT NULL,
-    inn1        INTEGER,
-    inn2        INTEGER,
-    inn3        INTEGER,
-    inn4        INTEGER,
-    inn5        INTEGER,
-    inn6        INTEGER,
-    inn7        INTEGER,
-    inn8        INTEGER,
-    inn9        INTEGER,
-    inn10       INTEGER,
-    inn11       INTEGER,
-    inn12       INTEGER,
-    inn13       INTEGER,
-    inn14       INTEGER,
-    inn15       INTEGER,
-    inn16       INTEGER,
-    inn17       INTEGER,
-    inn18       INTEGER,
-    inn19       INTEGER,
-    inn20       INTEGER,
-    inn21       INTEGER,
-    inn22       INTEGER,
-    inn23       INTEGER,
-    inn24       INTEGER,
-    inn25       INTEGER,
-    inn26       INTEGER,
-    inn27       INTEGER,
-    inn28       INTEGER,
-    lob         INTEGER,
-    mgr         TEXT,
-    stattype    TEXT NOT NULL,
-    b_pa        INTEGER,
-    b_ab        INTEGER,
-    b_r         INTEGER,
-    b_h         INTEGER,
-    b_d         INTEGER,
-    b_t         INTEGER,
-    b_hr        INTEGER,
-    b_rbi       INTEGER,
-    b_sh        INTEGER,
-    b_sf        INTEGER,
-    b_hbp       INTEGER,
-    b_w         INTEGER,
-    b_iw        INTEGER,
-    b_k         INTEGER,
-    b_sb        INTEGER,
-    b_cs        INTEGER,
-    b_gdp       INTEGER,
-    b_xi        INTEGER,
-    b_roe       INTEGER,
-    p_ipouts    INTEGER,
-    p_noout     INTEGER,
-    p_bfp       INTEGER,
-    p_h         INTEGER,
-    p_d         INTEGER,
-    p_t         INTEGER,
-    p_hr        INTEGER,
-    p_r         INTEGER,
-    p_er        INTEGER,
-    p_w         INTEGER,
-    p_iw        INTEGER,
-    p_k         INTEGER,
-    p_hbp       INTEGER,
-    p_wp        INTEGER,
-    p_bk        INTEGER,
-    p_sh        INTEGER,
-    p_sf        INTEGER,
-    p_sb        INTEGER,
-    p_cs        INTEGER,
-    p_pb        INTEGER,
-    d_po        INTEGER,
-    d_a         INTEGER,
-    d_e         INTEGER,
-    d_dp        INTEGER,
-    d_tp        INTEGER,
-    d_pb        INTEGER,
-    d_wp        INTEGER,
-    d_sb        INTEGER,
-    d_cs        INTEGER,
-    start_l1    TEXT,
-    start_l2    TEXT,
-    start_l3    TEXT,
-    start_l4    TEXT,
-    start_l5    TEXT,
-    start_l6    TEXT,
-    start_l7    TEXT,
-    start_l8    TEXT,
-    start_l9    TEXT,
-    start_f1    TEXT,
-    start_f2    TEXT,
-    start_f3    TEXT,
-    start_f4    TEXT,
-    start_f5    TEXT,
-    start_f6    TEXT,
-    start_f7    TEXT,
-    start_f8    TEXT,
-    start_f9    TEXT,
-    start_f10   TEXT,
-    date        DATE,
-    number      INTEGER,
-    site        TEXT,
-    vishome     CHAR(1),
-    opp         TEXT,
-    win         INTEGER,
-    loss        INTEGER,
-    tie         INTEGER,
-    gametype    TEXT,
-    box         TEXT,
-    pbp         TEXT,
-    PRIMARY KEY (gid, team, stattype)
-);
+-- ==========================================
+-- 4. Play-by-Play & Statistics
+-- ==========================================
 
-CREATE INDEX IF NOT EXISTS idx_teamstats_team ON retrosheet.teamstats(team);
-
--- batting.csv
-CREATE TABLE IF NOT EXISTS retrosheet.batting (
-    gid         TEXT NOT NULL,
-    id          TEXT NOT NULL,
-    team        TEXT NOT NULL,
-    b_lp        INTEGER,
-    b_seq       INTEGER,
-    stattype    TEXT NOT NULL,
-    b_pa        INTEGER,
-    b_ab        INTEGER,
-    b_r         INTEGER,
-    b_h         INTEGER,
-    b_d         INTEGER,
-    b_t         INTEGER,
-    b_hr        INTEGER,
-    b_rbi       INTEGER,
-    b_sh        INTEGER,
-    b_sf        INTEGER,
-    b_hbp       INTEGER,
-    b_w         INTEGER,
-    b_iw        INTEGER,
-    b_k         INTEGER,
-    b_sb        INTEGER,
-    b_cs        INTEGER,
-    b_gdp       INTEGER,
-    b_xi        INTEGER,
-    b_roe       INTEGER,
-    dh          INTEGER,
-    ph          INTEGER,
-    pr          INTEGER,
-    date        DATE,
-    number      INTEGER,
-    site        TEXT,
-    vishome     CHAR(1),
-    opp         TEXT,
-    win         INTEGER,
-    loss        INTEGER,
-    tie         INTEGER,
-    gametype    TEXT,
-    box         TEXT,
-    pbp         TEXT,
-    PRIMARY KEY (gid, id, team, stattype)
-);
-
-CREATE INDEX IF NOT EXISTS idx_batting_player ON retrosheet.batting(id);
-
--- pitching.csv
-CREATE TABLE IF NOT EXISTS retrosheet.pitching (
-    gid         TEXT NOT NULL,
-    id          TEXT NOT NULL,
-    team        TEXT NOT NULL,
-    p_seq       INTEGER,
-    stattype    TEXT NOT NULL,
-    p_ipouts    INTEGER,
-    p_noout     INTEGER,
-    p_bfp       INTEGER,
-    p_h         INTEGER,
-    p_d         INTEGER,
-    p_t         INTEGER,
-    p_hr        INTEGER,
-    p_r         INTEGER,
-    p_er        INTEGER,
-    p_w         INTEGER,
-    p_iw        INTEGER,
-    p_k         INTEGER,
-    p_hbp       INTEGER,
-    p_wp        INTEGER,
-    p_bk        INTEGER,
-    p_sh        INTEGER,
-    p_sf        INTEGER,
-    p_sb        INTEGER,
-    p_cs        INTEGER,
-    p_pb        INTEGER,
-    wp          INTEGER,
-    lp          INTEGER,
-    save        INTEGER,
-    gs          INTEGER,
-    gf          INTEGER,
-    cg          INTEGER,
-    date        DATE,
-    number      INTEGER,
-    site        TEXT,
-    vishome     CHAR(1),
-    opp         TEXT,
-    win         INTEGER,
-    loss        INTEGER,
-    tie         INTEGER,
-    gametype    TEXT,
-    box         TEXT,
-    pbp         TEXT,
-    PRIMARY KEY (gid, id, team, stattype)
-);
-
-CREATE INDEX IF NOT EXISTS idx_pitching_player ON retrosheet.pitching(id);
-
--- fielding.csv
-CREATE TABLE IF NOT EXISTS retrosheet.fielding (
-    gid         TEXT NOT NULL,
-    id          TEXT NOT NULL,
-    team        TEXT NOT NULL,
-    d_seq       INTEGER,
-    d_pos       INTEGER,
-    stattype    TEXT NOT NULL,
-    d_ifouts    INTEGER,
-    d_po        INTEGER,
-    d_a         INTEGER,
-    d_e         INTEGER,
-    d_dp        INTEGER,
-    d_tp        INTEGER,
-    d_pb        INTEGER,
-    d_wp        INTEGER,
-    d_sb        INTEGER,
-    d_cs        INTEGER,
-    d_gs        INTEGER,
-    date        DATE,
-    number      INTEGER,
-    site        TEXT,
-    vishome     CHAR(1),
-    opp         TEXT,
-    win         INTEGER,
-    loss        INTEGER,
-    tie         INTEGER,
-    gametype    TEXT,
-    box         TEXT,
-    pbp         TEXT,
-    PRIMARY KEY (gid, id, team, d_seq, d_pos, stattype)
-);
-
-CREATE INDEX IF NOT EXISTS idx_fielding_player ON retrosheet.fielding(id);
-
--- plays.csv (very wide; keep raw to start)
 CREATE TABLE IF NOT EXISTS retrosheet.plays_raw (
     gid         TEXT NOT NULL,
     event       TEXT NOT NULL,
@@ -512,7 +481,230 @@ CREATE TABLE IF NOT EXISTS retrosheet.plays_raw (
     umprf       TEXT,
     date        DATE,
     gametype    TEXT,
-    pbp         TEXT
+    pbp         TEXT,
+    FOREIGN KEY (gid) REFERENCES retrosheet.gameinfo(gid),
+    FOREIGN KEY (batter) REFERENCES retrosheet.personnel(id),
+    FOREIGN KEY (pitcher) REFERENCES retrosheet.personnel(id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_plays_gid_pn ON retrosheet.plays_raw(gid, pn);
+COMMENT ON TABLE retrosheet.plays_raw IS 'Detailed event-by-event play records parsed from Retrosheet event files.';
+
+-- (Batting, Pitching, Fielding tables remain defined but I will add comments)
+CREATE TABLE IF NOT EXISTS retrosheet.batting (
+    gid         TEXT NOT NULL,
+    id          TEXT NOT NULL,
+    team        TEXT NOT NULL,
+    b_lp        INTEGER,
+    b_seq       INTEGER,
+    stattype    TEXT NOT NULL,
+    b_pa        INTEGER,
+    b_ab        INTEGER,
+    b_r         INTEGER,
+    b_h         INTEGER,
+    b_d         INTEGER,
+    b_t         INTEGER,
+    b_hr        INTEGER,
+    b_rbi       INTEGER,
+    b_sh        INTEGER,
+    b_sf        INTEGER,
+    b_hbp       INTEGER,
+    b_w         INTEGER,
+    b_iw        INTEGER,
+    b_k         INTEGER,
+    b_sb        INTEGER,
+    b_cs        INTEGER,
+    b_gdp       INTEGER,
+    b_xi        INTEGER,
+    b_roe       INTEGER,
+    dh          INTEGER,
+    ph          INTEGER,
+    pr          INTEGER,
+    date        DATE,
+    number      INTEGER,
+    site        TEXT,
+    vishome     CHAR(1),
+    opp         TEXT,
+    win         INTEGER,
+    loss        INTEGER,
+    tie         INTEGER,
+    gametype    TEXT,
+    box         TEXT,
+    pbp         TEXT,
+    PRIMARY KEY (gid, id, team, stattype),
+    FOREIGN KEY (gid) REFERENCES retrosheet.gameinfo(gid),
+    FOREIGN KEY (id) REFERENCES retrosheet.personnel(id)
+);
+
+COMMENT ON TABLE retrosheet.batting IS 'In-game batting statistics for each player per game.';
+
+CREATE TABLE IF NOT EXISTS retrosheet.pitching (
+    gid         TEXT NOT NULL,
+    id          TEXT NOT NULL,
+    team        TEXT NOT NULL,
+    p_seq       INTEGER,
+    stattype    TEXT NOT NULL,
+    p_ipouts    INTEGER,
+    p_noout     INTEGER,
+    p_bfp       INTEGER,
+    p_h         INTEGER,
+    p_d         INTEGER,
+    p_t         INTEGER,
+    p_hr        INTEGER,
+    p_r         INTEGER,
+    p_er        INTEGER,
+    p_w         INTEGER,
+    p_iw        INTEGER,
+    p_k         INTEGER,
+    p_hbp       INTEGER,
+    p_wp        INTEGER,
+    p_bk        INTEGER,
+    p_sh        INTEGER,
+    p_sf        INTEGER,
+    p_sb        INTEGER,
+    p_cs        INTEGER,
+    p_pb        INTEGER,
+    wp          INTEGER,
+    lp          INTEGER,
+    save        INTEGER,
+    gs          INTEGER,
+    gf          INTEGER,
+    cg          INTEGER,
+    date        DATE,
+    number      INTEGER,
+    site        TEXT,
+    vishome     CHAR(1),
+    opp         TEXT,
+    win         INTEGER,
+    loss        INTEGER,
+    tie         INTEGER,
+    gametype    TEXT,
+    box         TEXT,
+    pbp         TEXT,
+    PRIMARY KEY (gid, id, team, stattype),
+    FOREIGN KEY (gid) REFERENCES retrosheet.gameinfo(gid),
+    FOREIGN KEY (id) REFERENCES retrosheet.personnel(id)
+);
+
+COMMENT ON TABLE retrosheet.pitching IS 'In-game pitching statistics for each pitcher per game.';
+
+CREATE TABLE IF NOT EXISTS retrosheet.fielding (
+    gid         TEXT NOT NULL,
+    id          TEXT NOT NULL,
+    team        TEXT NOT NULL,
+    d_seq       INTEGER,
+    d_pos       INTEGER,
+    stattype    TEXT NOT NULL,
+    d_ifouts    INTEGER,
+    d_po        INTEGER,
+    d_a         INTEGER,
+    d_e         INTEGER,
+    d_dp        INTEGER,
+    d_tp        INTEGER,
+    d_pb        INTEGER,
+    d_wp        INTEGER,
+    d_sb        INTEGER,
+    d_cs        INTEGER,
+    d_gs        INTEGER,
+    date        DATE,
+    number      INTEGER,
+    site        TEXT,
+    vishome     CHAR(1),
+    opp         TEXT,
+    win         INTEGER,
+    loss        INTEGER,
+    tie         INTEGER,
+    gametype    TEXT,
+    box         TEXT,
+    pbp         TEXT,
+    PRIMARY KEY (gid, id, team, d_seq, d_pos, stattype),
+    FOREIGN KEY (gid) REFERENCES retrosheet.gameinfo(gid),
+    FOREIGN KEY (id) REFERENCES retrosheet.personnel(id)
+);
+
+COMMENT ON TABLE retrosheet.fielding IS 'In-game fielding statistics for each player per position per game.';
+
+-- ==========================================
+-- 5. Specialized Historical Data
+-- ==========================================
+
+CREATE TABLE IF NOT EXISTS retrosheet.rosters (
+    player_id       TEXT,
+    lastname        TEXT,
+    firstname       TEXT,
+    bats            CHAR(1),
+    throws          CHAR(1),
+    team            TEXT,
+    pos             TEXT,
+    season          INTEGER,
+    PRIMARY KEY (player_id, team, season)
+);
+
+COMMENT ON TABLE retrosheet.rosters IS 'Seasonal team roster assignments extracted from .ROS files.';
+
+CREATE TABLE IF NOT EXISTS retrosheet.milestones (
+    type            TEXT,
+    game_id         TEXT,
+    date            DATE,
+    player_id       TEXT,
+    team            TEXT,
+    opponent        TEXT,
+    details         TEXT
+);
+
+COMMENT ON TABLE retrosheet.milestones IS 'Central repository for specialized milestone lists (No-hitters, 3+ HR games, etc.).';
+
+CREATE TABLE IF NOT EXISTS retrosheet.ejections (
+    gameid          TEXT,
+    date            DATE,
+    dh              INTEGER,
+    ejectee         TEXT,
+    ejecteename     TEXT,
+    team            TEXT,
+    job             CHAR(1),
+    umpire          TEXT,
+    umpirename      TEXT,
+    inning          INTEGER,
+    reason          TEXT,
+    FOREIGN KEY (ejectee) REFERENCES retrosheet.personnel(id),
+    FOREIGN KEY (umpire) REFERENCES retrosheet.personnel(id)
+);
+
+COMMENT ON TABLE retrosheet.ejections IS 'Detailed records of in-game ejections.';
+
+CREATE TABLE IF NOT EXISTS retrosheet.transactions (
+    date            DATE,
+    seq             INTEGER,
+    person_id       TEXT,
+    type            CHAR(1),
+    from_team       TEXT,
+    to_team         TEXT,
+    info            TEXT,
+    PRIMARY KEY (date, seq, person_id)
+);
+
+COMMENT ON TABLE retrosheet.transactions IS 'Player movements database (Trades, Free Agency, Drafts).';
+
+CREATE TABLE IF NOT EXISTS retrosheet.schedules (
+    date            DATE,
+    number          INTEGER,
+    day_of_week     CHAR(3),
+    vis_team        TEXT,
+    vis_league      CHAR(2),
+    vis_game_num    INTEGER,
+    home_team       TEXT,
+    home_league     CHAR(2),
+    home_game_num   INTEGER,
+    day_night       CHAR(1),
+    postponed       TEXT,
+    makeup_date     DATE,
+    PRIMARY KEY (date, number, vis_team, home_team)
+);
+
+COMMENT ON TABLE retrosheet.schedules IS 'Historical and future game schedules.';
+
+-- Indices for performance
+CREATE INDEX IF NOT EXISTS idx_gamelogs_date ON retrosheet.gamelogs(game_date);
+CREATE INDEX IF NOT EXISTS idx_gamelogs_teams ON retrosheet.gamelogs(visiting_team, home_team);
+CREATE INDEX IF NOT EXISTS idx_gameinfo_season ON retrosheet.gameinfo(season);
+CREATE INDEX IF NOT EXISTS idx_rosters_team_season ON retrosheet.rosters(team, season);
+CREATE INDEX IF NOT EXISTS idx_milestones_type ON retrosheet.milestones(type);
