@@ -5,6 +5,7 @@ import zipfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Optional
+from tqdm import tqdm
 
 import requests
 import psycopg2
@@ -112,6 +113,7 @@ class RetrosheetIngestor:
             with conn.cursor() as cur:
                 with open(ddl_path, "r") as f:
                     cur.execute(f.read())
+            conn.commit()
 
     def _copy_csv(self, cursor, table: str, csv_path: Path, header: bool = True, delimiter: str = ",") -> None:
         logger.info("COPY %s FROM %s", table, csv_path)
@@ -147,31 +149,67 @@ class RetrosheetIngestor:
         }
 
         with self._conn() as conn:
-            with conn.cursor() as cur:
-                cur.execute("SET session_replication_role = 'replica';")
-                for src in sources:
-                    staging_dir = staging_root / src
-                    if not staging_dir.exists():
-                        continue
-                    
-                    for filename, table in mapping.items():
-                        # Robust recursive find
-                        paths = [p for p in staging_dir.rglob("*") if p.name.lower() == filename.lower()]
-                        if paths:
-                            self._copy_csv(cur, table, paths[0])
-                cur.execute("SET session_replication_role = 'origin';")
+            # We will commit after each table to ensure visibility
+            cur = conn.cursor()
+            cur.execute("SET session_replication_role = 'replica';")
+            for src in sources:
+                staging_dir = staging_root / src
+                if not staging_dir.exists():
+                    continue
 
-    def ingest_gamelogs(self) -> None:
-        staging_dir = self.rs_cfg.data_dir / "staging" / "gamelogs"
-        if not staging_dir.exists():
+                for filename, table in mapping.items():
+                    # Robust recursive find
+                    paths = [p for p in staging_dir.rglob("*") if p.name.lower() == filename.lower()]
+                    if paths:
+                        self._copy_csv(cur, table, paths[0])
+                        conn.commit() # Commit after each table
+            cur.execute("SET session_replication_role = 'origin';")
+            conn.commit()
+
+
+    def ingest_single_table(self, table_name: str) -> None:
+        staging_root = self.rs_cfg.data_dir / "staging"
+        
+        # Need to find the file that maps to the table
+        mapping = {
+            "allplayers.csv": "retrosheet.allplayers",
+            "gameinfo.csv": "retrosheet.gameinfo",
+            "teamstats.csv": "retrosheet.teamstats",
+            "batting.csv": "retrosheet.batting",
+            "pitching.csv": "retrosheet.pitching",
+            "fielding.csv": "retrosheet.fielding",
+            "plays.csv": "retrosheet.plays_raw",
+            "ejections.csv": "retrosheet.ejections",
+            "biofile0.csv": "retrosheet.personnel",
+            "ballparks0.csv": "retrosheet.parks",
+            "umpires0.csv": "retrosheet.umpires",
+            "managers0.csv": "retrosheet.managers",
+            "coaches0.csv": "retrosheet.coaches",
+            "teams0.csv": "retrosheet.teams",
+            "tran.txt": "retrosheet.transactions",
+        }
+        
+        # Find filename for table
+        filename = None
+        for f, t in mapping.items():
+            if t == f"retrosheet.{table_name}" or t == table_name:
+                filename = f
+                break
+        
+        if not filename:
+            logger.error("Could not find filename mapping for table: %s", table_name)
             return
 
         with self._conn() as conn:
             with conn.cursor() as cur:
-                # Game logs are .txt files, comma-delimited, NO header, and use double quotes
-                for path in staging_dir.rglob("*.txt"):
-                    if "GL" in path.name.upper():
-                        self._copy_csv(cur, "retrosheet.gamelogs", path, header=False)
+                # Find the file in staging
+                for path in staging_root.rglob("*"):
+                    if path.name.lower() == filename.lower():
+                        logger.info("Ingesting %s into %s", path, table_name)
+                        self._copy_csv(cur, f"retrosheet.{table_name}", path, header=(filename != "tran.txt"))
+                        conn.commit()
+                        return
+        logger.error("File for table %s not found in staging", table_name)
 
     def ingest_support_tables(self) -> None:
         staging_root = self.rs_cfg.data_dir / "staging"

@@ -21,6 +21,7 @@ def main() -> None:
     ing.add_argument("--dsn", required=True, help="PostgreSQL DSN")
     ing.add_argument("--data-dir", type=Path, default=Path("data/retrosheet"))
     ing.add_argument("--init-schema", action="store_true", help="Initialize schema (run DDL)")
+    ing.add_argument("--table", help="Specific table to ingest (e.g., 'plays_raw', 'gamelogs')")
 
     full = sub.add_parser("full", help="Download and ingest everything (Total Mirror)")
     full.add_argument("--dsn", required=True, help="PostgreSQL DSN (e.g. postgresql://user:pass@localhost:5432/db)")
@@ -44,10 +45,18 @@ def main() -> None:
         ingestor = RetrosheetIngestor(pg_cfg, rs_cfg)
         if args.init_schema:
             ingestor.init_schema()
-        ingestor.ingest_master_csvs()
-        ingestor.ingest_support_tables()
-        ingestor.ingest_gamelogs()
-        ingestor.vacuum_analyze()
+        
+        if args.table:
+            # Table-specific ingest
+            if args.table == "gamelogs":
+                ingestor.ingest_gamelogs()
+            else:
+                ingestor.ingest_single_table(args.table)
+        else:
+            ingestor.ingest_master_csvs()
+            ingestor.ingest_support_tables()
+            ingestor.ingest_gamelogs()
+            ingestor.vacuum_analyze()
     elif args.cmd in ["full", "bootstrap"]:
         logging.info("Starting robust bootstrap of Retrosheet data...")
         cfg = RetrosheetConfig(data_dir=args.data_dir)
